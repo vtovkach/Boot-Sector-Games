@@ -6,7 +6,7 @@ section .text
 start:
     ; starting point 
     call initialize_board
-    ;call display_board
+    call display_board
     
     int 0x20 
 
@@ -38,41 +38,49 @@ get_input:
 
 ;Display Board
 display_board:
-    ; will display board here
     push ax
     push bx
-    push dx
-    push cx
+    push di
+    push si 
+    mov si, board   ; si holds a current address of board
+    mov di, board
+    add di, 9       ; di holds a max address  
+    mov bx, 0       ; new line iterator 
+testLoop:
+    cmp si, di
+    jge endloop
 
-    mov bx, board
-    mov dx, 0 ; iterator
-loop2Test:
-    cmp dx, 9
-    jge end_loop2
-    
-    ; module 2
-    mov ax, dx 
-    mov cx, 2
-    div cx
+    ; calculate if new line needed 
+    mov ax, bx
+    mov cx, 3   ; modulo 0
+    xor dx, dx  ; clear reg dx 
+    div cx 
     cmp dx, 0
-    jne endif
-if_newline:
-    push ax
-    mov ax, 0x0d
+    jne endifnew
+ifnew: 
+    mov ax, 10
     call display_letter
-    mov ax, 0x0a
+    mov ax, 13
     call display_letter
-    pop ax
-endif:
-    ;continue here
-    mov al, [bx]
+endifnew:
+    ;endif
+
+    mov ax, [si]
     call display_letter
-    inc dx
-    add bx, 1
-    jmp loop2Test 
-end_loop2:
-    pop dx
+    add si, 1 ; increment pointer 
+    add bx, 1 ; increment new line iterator
+    jmp testLoop
+endloop:
+    ; make new line 
+    mov ax, 10
+    call display_letter
+    call display_letter
+    mov ax, 13
+    call display_letter
+    pop si
+    pop di
     pop bx
+    pop ax 
     ret
 ;;;;;
 
