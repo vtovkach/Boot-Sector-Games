@@ -1,193 +1,115 @@
-
-; Sieve of Eratosthenes 
+; Sieve of Eratosthenes – “My Version”
+; Finds primes less than table_size.
+; Assumptions:
+;   - table is at address 0x8000.
+;   - table_size is defined (here 15 means we test numbers 2..14).
+;   - The BIOS routines display_letter and display_number are provided.
+;   - This code is assembled for a .COM file (org 0x0100).
 
 org 0x0100
 
-table:       equ 0x8000
-table_size:  equ 15
+table       equ 0x8000
+table_size  equ 20          ; test numbers 2 .. 14
 
-; 0 false
-; 1 true
-
-    ; 1.) Create a table starting from 2, n-size
-    ; 2.) Set every position at table to true
-    ; - 0 false
-    ; - 1 true 
-    ; 3.) Set k to be a prime $bx
-    ; 4.) Mark every divisible number by k as false 
-    ; 5.) Set k to next prime (fist not marked as false)
-    ; 6.) Go to step 4 again, 
-    ; 7.) Stop when k is greater than sqrt(n)
-    ; 8.) Print all numbers marked true (1)
-
-
-; for(bx = 2;, bx < n, bx++)
-    ;   for(cx = bx + 1; cx < n; cx++)
-
+;--------------------------------------------------
+; 1. Initialize the table:
+;    For numbers 2..table_size-1, set the table entries to 1 (true).
+;    The table index for number N is (N - 2).
 start:
+    mov cx, table_size - 2   ; There are (table_size - 2) numbers (from 2 to table_size-1)
+    mov di, table
+init_loop:
+    mov byte [di], 1         ; assume number is prime
+    inc di
+    loop init_loop
+    
+;--------------------------------------------------
+; 2. Outer loop: for each number p (starting at 2) that is still marked prime,
+;    mark its multiples as composite.
+;    We'll use BX for p.
+    mov bx, 2                ; p = 2
+
+outer_loop:
+    ; Stop outer loop if p*p >= table_size.
+    mov ax, bx
+    mul bx                   ; AX = p*p
+    cmp ax, table_size
+    jae print_results        ; if p*p >= table_size, we are done
+
+    ; Check if table entry for p (index = p - 2) is still true.
+    mov si, bx
+    sub si, 2               ; SI = index for p
+    mov al, [table + si]
+    cmp al, 0
+    je next_prime           ; if p is marked composite, skip marking multiples
+    
+    ; Inner loop: mark multiples of p.
+    ; Start j = p*p.
+    mov ax, bx
+    mul bx                  ; AX = p*p
+    mov dx, ax              ; DX = j = p*p
+inner_loop:
+    cmp dx, table_size      ; while j < table_size...
+    jae next_prime_inner
+    ; Compute table index for j: index = j - 2.
+    mov si, dx
+    sub si, 2
+    mov byte [table + si], 0 ; mark j composite
+    add dx, bx              ; j = j + p
+    jmp inner_loop
+next_prime_inner:
+    ; Get next candidate for p.
+next_prime:
+    inc bx
+    cmp bx, table_size
+    jb outer_loop
+
+;--------------------------------------------------
+; 3. Print the primes.
+;    For each number N from 2 to table_size-1, if table[N-2] is 1, print N.
+print_results:
+    ; Set up: CX = count of numbers, SI points to table, BX = current number.
+    mov cx, table_size - 2  ; number of table entries
     mov si, table
-    mov cx, 2
-    ; 0 and 1 are false by default
-    mov byte [si], 0
-    add si, 1
-    mov byte [si], 0
-    ; table always starts at 2 
-    mov si, table
-    add si, 2
-p0:
-    mov byte [si], 1
-    add si, 1
-    add cx, 1
-    cmp cx, table_size
-    jl p0
-    ; reset table and $cx
-    mov si, table
-    add si, 3
-    mov cx, 3 ; $cx : j
-    ; set i to first p; Sieve of Eratosthenes 
-org 0x0100
+    mov bx, 2               ; start at number 2
 
-table:       equ 0x8000
-table_size:  equ 15
-
-; 0 false
-; 1 true
-
-; Steps:
-; 1) Create a table from 0 to n–1.
-;    Set index 0 and 1 false; indices 2..n–1 true.
-; 2) For each prime k (in BX), mark its multiples as false.
-; 3) When k >= table_size, print all indices with value 1.
-
-start:
-    mov si, table
-    mov cx, 2
-    ; 0 and 1 are false by default
-    mov byte [si], 0
-    add si, 1
-    mov byte [si], 0
-    ; table always starts at 2 
-    mov si, table
-    add si, 2
-p0:
-    mov byte [si], 1       ; mark index as true
-    add si, 1
-    add cx, 1
-    cmp cx, table_size
-    jl p0
-
-    ; reset table pointer and set candidate j = 3
-    mov si, table
-    add si, 3
-    mov cx, 3           ; cx: candidate (j)
-    mov bx, 2           ; bx: current prime (i)
-    jmp p2
-
-; --------------------------------------------------
-; p2: Divide candidate (in CX) by current prime (in BX)
-p2:
-    mov ax, cx
-    mov dx, 0
-    div bx             ; AX: quotient, DX: remainder
-    cmp dx, 0
-    je mark          ; if divisible, mark candidate as composite
-    jmp test_j
-
-mark:
-    mov byte [si], 0  ; mark candidate composite
-    jmp test_j
-
-; --------------------------------------------------
-; test_j: Check if candidate index (CX) is within table bounds.
-test_j:
-    cmp cx, table_size
-    jb inc_j         ; if CX < table_size, continue inner loop
-    ; otherwise, finish inner loop and select next prime:
-    mov cx, bx
-    add cx, 1
-    mov si, table
-    add si, cx
-    jmp inc_i
-
-inc_j:
-    add cx, 1
-    add si, 1
-    jmp p2
-
-; --------------------------------------------------
-; inc_i: Search for next candidate that is still marked true
-;         to become the next prime (BX).
-inc_i:
+print_loop:
+    cmp cx, 0
+    je finish
     mov al, [si]
     cmp al, 1
-    je inc_i_i
-    add cx, 1
-    add si, 1
-    jmp inc_i
-
-inc_i_i:
-    mov bx, cx       ; found next prime candidate; update BX
-    jmp test_i
-
-; --------------------------------------------------
-; test_i: If BX (the current prime) is still less than table_size, 
-;         then start another marking pass. Otherwise, go to print.
-test_i:
-    cmp bx, table_size
-    jl prepare_next_iteration
-    ; no more primes to process: prepare printing
-    mov si, table
-    mov cx, 0
-    jmp test_print
-
-prepare_next_iteration:
-    ; set candidate to BX+1
-    mov si, table
-    mov cx, bx
-    add cx, 1
-    add si, cx
-    jmp p2
-
-; --------------------------------------------------
-; Printing loop: iterate through table indices 0..table_size-1
-test_print:
-    cmp cx, table_size
-    jb print_primes
-    jmp exit
-
-print_primes:
-    cmp byte [si], 1
-    je print
-    jmp inc_print
-
-print:
-    mov ax, cx
+    jne skip_print          ; if not prime, skip printing
+    mov ax, bx
     call display_number
-    mov ax, 0xA
+    mov ax, 0x20            ; print a space
     call display_letter
-    mov ax, 0xD
-    call display_letter
-inc_print:
-    add si, 1
-    add cx, 1
-    jmp test_print
+skip_print:
+    inc bx
+    inc si
+    dec cx
+    jmp print_loop
 
-exit:
-    int 0x20
+finish:
+    int 0x20                ; exit to DOS
 
-; --------------------------------------------------
-; Display routines:
+;--------------------------------------------------
+; BIOS-based display routines.
+; These routines assume:
+;   - display_letter: prints the character in AL.
+;   - display_number: prints the number in AX in decimal.
+; (They use BIOS interrupts.)
+
 display_letter:
     push ax
     push bx
     push cx
-    push dx 
+    push dx
     push si
-    push di 
-    mov ah, 0x0e    ; BIOS teletype function
-    mov bx, 0x000f  ; page 0, attribute
+    push di
+    mov ah, 0x0E            ; teletype output
+    mov bx, 0x000F          ; page 0, attribute F
     int 0x10
-    pop di 
+    pop di
     pop si
     pop dx
     pop cx
@@ -195,164 +117,17 @@ display_letter:
     pop ax
     ret
 
-read_keyboard:
-    push bx
-    push cx
-    push dx 
-    push si
-    push di 
-    mov ah, 0x00
-    int 0x16
-    pop di
-    pop si 
-    pop dx 
-    pop cx 
-    pop bx 
+display_number:
+    ; Recursively display a positive number in AX.
+    mov dx, 0
+    mov cx, 10
+    div cx                  ; AX = quotient, DX = remainder
+    push dx
+    cmp ax, 0
+    je disp_num_pop
+    call display_number
+disp_num_pop:
+    pop ax
+    add al, '0'
+    call display_letter
     ret
-
-display_number:
-    mov dx, 0
-    mov cx, 10
-    div cx           ; divide AX by 10
-    push dx 
-    cmp ax, 0 
-    je display_number_1
-    call display_number
-display_number_1:
-    pop ax
-    add al, '0'
-    call display_letter
-    ret. 
-    ; jump p2
-    cmp bx, table_size
-    jl prepare_next_iteration
-    ; prepare si and cx for print 
-    mov si, table 
-    mov cx, 0 
-    jmp print_primes
-
-prepare_next_iteration:
-    ; prepare next iteration 
-    mov si, table 
-    mov cx, bx 
-    add cx, 1 
-    add si, cx 
-    jmp p2
-
-test_j:
-    ; mistake first incrment then check 
-    cmp cx, table_size
-    jl inc_j
-    ; prepare for inc_i
-    mov cx, bx
-    add cx, 1
-    mov si, table 
-    add si, cx 
-    jmp inc_i
-
-inc_j:
-    add cx, 1
-    add si, 1
-    jmp p2
-
-inc_i:
-    ; check [si] == 0
-    mov al, [si]
-    cmp al, 1
-    je inc_i_i
-    add cx, 1 
-    add si, 1 
-    jmp inc_i
-
-inc_i_i:
-    mov bx, cx
-    jmp test_i
-
-; j / i : cx / bx 
-
-; $bx : i
-p2:
-    mov ax, cx 
-    mov dx, 0
-    div bx
-    ; AX: Quotient, DX: Remainder 
-    cmp dx, 0
-    je mark
-    jmp test_j
-mark:
-    mov byte [si], 0
-    jmp test_j
-
-test_print:
-    cmp cx, table_size
-    jl print_primes
-    jmp exit
-print_primes:
-    cmp byte [si], 1
-    je print
-    jmp inc_print
-
-print:
-    mov ax, cx
-    call display_number
-    mov ax, 0xA
-    call display_letter
-    mov ax, 0xD
-    call display_letter
-inc_print:
-    add si, 1
-    add cx, 1
-    jmp test_print
-
-exit:
-    ; leave loop after everuthing is done
-    int 0x20
-
-
-display_letter:
-    push ax
-    push bx
-    push cx
-    push dx 
-    push si
-    push di 
-    mov  ah, 0x0e    ; Load AH with code for terminal output 
-    mov  bx, 0x000f  ; Load BH page zero and BL color (graphic mode)
-    int  0x10        ; Call BIOS for displaying one letter 
-    pop di 
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret             ; Return to caller
-
-read_keyboard:
-    push bx
-    push cx
-    push dx 
-    push si
-    push di 
-    mov  ah, 0x00   ; Load Ah with code for keyboard read 
-    int  0x16       ; Call the BIOS for reading keyboard
-    pop di
-    pop si 
-    pop dx 
-    pop cx 
-    pop bx 
-    ret             ; Return to caller 
-
-display_number:
-    mov dx, 0
-    mov cx, 10
-    div cx    ; divide ax by cx
-    push dx 
-    cmp ax, 0 
-    je display_number_1
-    call display_number
-
-display_number_1:
-    pop ax
-    add al, '0'
-    call display_letter
-    ret  
