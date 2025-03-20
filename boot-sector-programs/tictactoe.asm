@@ -1,18 +1,22 @@
 
 org 0x7c00
 
+; Code Segment is at 0x7C00
+; Instruction Pointer is at 00000
+; Data Segment should also match code segment 
+
 start:
     ; Setup Vide Mode 80x25
     mov ax, 0x0003
     int 0x10
     ; Initialize Video Buffer Address 
-    mov ax, 0x07c0
+    mov ax, cs
     mov ds, ax 
     mov ax, 0xb800
     mov es, ax 
     
     xor di, di
-
+    
     mov al, 'H'
     mov ah, 0x1E
     stosw 
