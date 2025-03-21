@@ -26,7 +26,7 @@ test_module:
     jmp end_loop
 
 ; ISSUE HERE is that print_line subroutine never returns 
-
+; ISSUE is specificatlly with cx register as it should be declered outside the loop
 %if 0
 print_screen:
     ;Main Loop
