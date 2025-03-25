@@ -1,27 +1,84 @@
 ;;;
 ;;; Space Invaders Game 
 ;;; 
+use16
 org 0x7c00
+
+;; DEFINE VARIABLES AFTER SCREEN MEMORY - 320*200 = 64000 (FA00H)
+sprites         equ 0FA00h
+alien1          equ 0FA00h
+alien2          equ 0FA04h
+ship            equ 0FA08h
+barrierArr      equ 0FA0Ch 
+alienArr        equ 0FA20h ; 2 words (1 dblword) - 32bits/aliens
+playerX         equ 0FA24h
+shotsArr        equ 0FA25h
+alienY          equ 0FA2Dh
+alienX          equ 0FA2Eh
+num_aliens      equ 0FA2Fh
+direction       equ 0FA30h
+move_timer      equ 0FA31h
+change_alien    equ 0FA33h ; Use alternate sprite yes/no
+
+;; CONSTANTS ====================================
+SCREEN_WIDTH            equ 320
+SCREEN_HEIGHT           equ 200
+VIDEO_MEMORY            equ 0A000h
+TIMER                   equ 046Ch  ; # of timer ticks since midnight
+BARRIERX                equ 22
+BARRIERY                equ 85
+PLAYERY                 equ 93
+SPRITEH                 equ 4
+SPRITEW                 equ 8
+SPRITEWP                equ 16
+
+; colors 
+ALIEN_COLOR             equ 02h  ; Green
+PLAYER_COLOR            equ 07h  ; Gray
+BARRIER_COLOR           equ 27h  ; RED
+PLAYER_SHOT_COLOR       equ 0Bh  ; Cyan
+ALIEN_SHOT_COLOR        equ 0Eh  ; Yellow
+
+
 ;; SETUP 
 ;; Set up video mode - VGA mod 13h, 320x200, 256 colors, 8bpp, linear framebuffer at address 0xA000
 mov ax, 0x0013
 int 0x10 
 
 ;; Set up video memory
-push 0xA000
-pop es              ; ES -> 0xA000  
+push VIDEO_MEMORY
+pop es                  ; ES -> 0xA000  
 
 ;; GAME LOOP ===================================
 game_loop:
-    mov al, 0x04        ; VGA RED
-    mov cx, 320*200
+    xor ax, ax
     xor di, di
-    rep stosb   ; [ES:DI], al cx # of times
+    mov cx, SCREEN_HEIGHT * SCREEN_WIDTH
+    rep stosb           ; [ES:DI], al cx # of times
+
+    ;; ES:DI now points to AFA00h
+
+    ;; Draw aliens -------------------------------
+    ;; Draw barriers -----------------------------
+    ;; Draw player ship --------------------------
+    ;; Check if shot hit anything ----------------
+        ;; Hit player
+        ;; Hit barrier 
+        ;; Hit allien
+    ;; Draw shots -------------------------------- 
+    ;; Create alien shots ------------------------
+    ;; Move aliens -------------------------------
+    ;; Get player input --------------------------
+
 
     ;; Delay timer - 1 tick delay (1 tick = 18.2/second)
-    
-
-
+    ;; 046Ch # of imer ticks since midnight 
+    delay_timer:
+        mov ax, word [046Ch]
+        inc ax
+        .wait_d:
+            cmp [0x046C], ax 
+            jl .wait_d
 jmp game_loop
 
 
@@ -29,6 +86,43 @@ jmp game_loop
 game_over:
     cli
     hlt
+
+
+;; Draw a sprite to the screen
+
+draw_sprite:
+    ret 
+
+;; Get X/Y screen position in DI
+
+
+
+
+;; CODE SEGMENT DATA ===========================================
+sprite_bitmaps:
+    db 10011001b    ; Alien 1 bitmap
+    db 01011010b 
+    db 00111100b
+    db 01000010b
+
+    db 10011001b    ; Alien 2 bitmap
+    db 01011010b 
+    db 00111100b
+    db 01000010b
+
+    db 00001000b    ; Player Ship bitmap
+    db 00011100b 
+    db 00110110b
+    db 11111111b
+
+    db 00111100b    ; Barrier bitmap
+    db 01111110b 
+    db 11100111b
+    db 11100111b
+
+    ;; I am here 
+    
+    
 
 times 510-($-$$) db 0
 
