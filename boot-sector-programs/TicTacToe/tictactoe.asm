@@ -27,28 +27,42 @@ start:
 game_loop:
     ; game loop
     mov bx, table
-    push bx
-    mov cx, 9
-    call draw_game
-    pop bx 
+    mov cx, 3 ; there're three lines to print
 
-    jmp end 
+    ; set initial draw position 
+    push 0xb800
+    pop es 
+    xor di, di
+    mov si, 0 ; number of symbols printed
+    call draw_game 
+
+    ; TODO 
+    jmp end;
 
 draw_game:
     ; draw game table
     ; arguments: $bx - table base address, $cx - counter 
-    push cx 
-    mov cx, 3
+    push cx
+    mov cx, 3 
     call draw_line
-    pop cx
-
+    pop cx 
+    inc si
+    ; check if si == 3
+    cmp si, 3
+    jne .no_update
+; update si, if $si == 3
+    mov si, 0
+    add di, 156
+.no_update:
     loop draw_game
-
+    ret
+    
 draw_line:
     ; display a line
-    mov byte al, [bx]
+    ; args: $cx - loop counter (3), $bx - table address 
     mov ah, TEXT_COLOR
-    stosw 
+    mov al, [bx]
+    stosw
     inc bx 
     loop draw_line
     ret 
@@ -62,8 +76,7 @@ end:
     cli  ; Disable interupts
     hlt  ; Halt the CPU
 
-
-table db '1', '2', '3', '4', '5', '6', '7', '9'
+table db '1', '2', '3', '4', '5', '6', '7', '8', '9'
 
 times 510 - ($ - $$) db 0
 db 0x55, 0xaa
