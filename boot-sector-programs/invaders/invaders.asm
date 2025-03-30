@@ -48,6 +48,8 @@ int 0x10
 ;; Set up video memory
 push VIDEO_MEMORY
 pop es                  ; ES -> 0xA000  
+mov di, sprites         ; 
+mov si, sprite_bitmaps
 
 ;; GAME LOOP ===================================
 game_loop:
@@ -120,10 +122,19 @@ sprite_bitmaps:
     db 11100111b
     db 11100111b
 
-    ;; I am here 
-    
-    
 
+    ;; Initial variable values 
+    dw 0FFFFh       ; Alien array
+    dw 0FFFFh
+    db 70           ; PlayerX
+    ;; times 6 db 0 ; Shots Array     
+    dw 230Ah        ; alien Y & alien X | 10 = Y, 35 = X
+    db 20h 
+
+    db 0FBh         ; Direction -5
+    dw 18           ; Move Timer 
+    db 1            ; Chagne alien - toggle between 
+    
 times 510-($-$$) db 0
 
 ; Boot signature 
