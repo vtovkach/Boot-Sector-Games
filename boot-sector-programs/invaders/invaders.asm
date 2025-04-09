@@ -63,14 +63,13 @@ lodsd
 mov cl, 5
 rep stosd  
 
-
 ;; Set initial variables
 mov cl, 5
-movsb 
+rep movsb 
 
 xor ax, ax
 mov cl, 4
-stosw 
+rep stosw 
 
 mov cl, 7
 rep movsb 
@@ -158,7 +157,7 @@ sprite_bitmaps:
     db 70           ; PlayerX
     ;; times 6 db 0 ; Shots Array     
     dw 230Ah        ; alien Y & alien X | 10 = Y, 35 = X
-    db 20h 
+    db 20h          ; # aliens = 32 
 
     db 0FBh         ; Direction -5
     dw 18           ; Move Timer 
