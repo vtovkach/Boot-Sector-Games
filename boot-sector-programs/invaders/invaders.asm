@@ -8,7 +8,7 @@ org 0x7c00
 sprites         equ 0FA00h
 alien1          equ 0FA00h
 alien2          equ 0FA04h
-ship            equ 0FA08h
+ship            equ 0FA08h 
 barrierArr      equ 0FA0Ch 
 alienArr        equ 0FA20h ; 2 words (1 dblword) - 32bits/aliens
 playerX         equ 0FA24h
@@ -48,8 +48,37 @@ int 0x10
 ;; Set up video memory
 push VIDEO_MEMORY
 pop es                  ; ES -> 0xA000  
-mov di, sprites         ; 
-mov si, sprite_bitmaps
+
+;; Load sprite bitmaps into es:di
+mov di, sprites             ;; address (FA00H)
+mov si, sprite_bitmaps      
+mov cl, 6
+;; mov worrd from [DS:SI] to [ES:DI]
+rep movsw
+
+;; Move barrier bitmap to barrier array
+;; Barrier array will contain 5 barriers 
+;; So I move 5 doblewords into barrierarray; address []
+lodsd    
+mov cl, 5
+rep stosd  
+
+
+;; Set initial variables
+mov cl, 5
+movsb 
+
+xor ax, ax
+mov cl, 4
+stosw 
+
+mov cl, 7
+rep movsb 
+
+; Make Extra Segment equal to Data Segment 
+push  es
+pop   ds 
+
 
 ;; GAME LOOP ===================================
 game_loop:
