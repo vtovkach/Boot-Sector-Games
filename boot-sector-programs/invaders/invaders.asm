@@ -87,8 +87,38 @@ game_loop:
     rep stosb           ; [ES:DI], al cx # of times
 
     ;; ES:DI now points to AFA00h
-
     ;; Draw aliens -------------------------------
+
+    mov si, alienArr
+    mov bl, ALIEN_COLOR
+    mov ax, [si + 13]   ; AL = alienY, AH = alienX
+    cmp byte [si+19], cl
+    mov cl, 4 
+    jg draw_alien_loop  ; Nope, use normal sprites
+    add di, cx 
+    draw_next_alien_row:
+        pusha 
+        mov cl, 8       ; # of aliens to chceck per row
+        .check_next_alien:
+            pusha
+            dec cx 
+            bt [si], cx 
+            jnc .next_alien
+
+            mov si, di 
+            call draw_sprite 
+
+            .next_alien:
+                popa 
+                add ah, SPRITEW+4
+        loop .check_next_alien
+
+        popa 
+        add al, SPRITEH+2
+    loop draw_next_alien_row
+    
+
+
     ;; Draw barriers -----------------------------
     ;; Draw player ship --------------------------
     ;; Check if shot hit anything ----------------
@@ -119,14 +149,37 @@ game_over:
 
 
 ;; Draw a sprite to the screen
-
+;; INPUT parameters: 
+;;  SI = address of sprite to draw 
+;;  AL = Y Value of sprite 
+;;  AH = X value of sprite 
+;;  BL = color 
 draw_sprite:
+    call get_screen_position
+    mov cl, SPRITEH
+    .next_line:
+        push cx 
+        lodsb 
+        ;; I am here!!!!
+
+
     ret 
 
-;; Get X/Y screen position in DI
+;; GET X/Y screen position in DI 
+;; INPUT Parameters:
+;;  AL = Y value
+;;  AH = X value 
+;; Clobbers:
+;;  DX
+get_screen_position:
+    mov dx, ax      ; Save Y/X values  
+    cbw             ; Convert byte to word - sign extend AL into AH, AH = 0 if AL < 128
+    imul di, ax, SCREEN_WIDTH*2   ; DI = Y value 
+    mov ah, al      ; AX = X value  
+    shl ax, 1       ; X value * 2
+    add di, ax      ; DI = Y value + X value or X/Y positions 
 
-
-
+    ret
 
 ;; CODE SEGMENT DATA ===========================================
 sprite_bitmaps:
