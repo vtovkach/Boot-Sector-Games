@@ -41,6 +41,12 @@ PLAYER_SHOT_COLOR       equ 0Bh  ; Cyan
 ALIEN_SHOT_COLOR        equ 0Eh  ; Yellow
 
 
+;; Clarifications 
+
+;; each bit in alien indicates wheather alien is alive and needs to be displayed 
+;; we have 32 aliens, alienarray is 4 bytes (32 bits)
+
+
 ;; SETUP 
 ;; Set up video mode - VGA mod 13h, 320x200, 256 colors, 8bpp, linear framebuffer at address 0xA000
 mov ax, 0x0013
@@ -108,7 +114,7 @@ game_loop:
 
             mov si, di      ; SI = alien sprite to draw
             call draw_sprite
-
+            
             .next_alien:
                 popa
                 add ah, SPRITE_WIDTH+4
@@ -193,7 +199,7 @@ draw_sprite:
 get_screen_position:
     mov dx, ax      ; Save Y/X values
     cbw             ; Convert byte to word - sign extend AL into AH, AH = 0 if AL < 128
-    imul di, ax, SCREEN_WIDTH*2  ; DI = Y value
+    imul di, ax, SCREEN_WIDTH  * 2  ; DI = Y value
     mov al, dh      ; AX = X value
     shl ax, 1       ; X value * 2
     add di, ax      ; DI = Y value + X value or X/Y position
