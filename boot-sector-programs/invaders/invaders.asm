@@ -28,9 +28,10 @@ TIMER                   equ 046Ch  ; # of timer ticks since midnight
 BARRIERX                equ 22
 BARRIERY                equ 85
 PLAYERY                 equ 93
-SPRITEH                 equ 4
-SPRITEW                 equ 8
+SPRITE_HEIGHT           equ 4
+SPRITE_WIDTH            equ 8
 SPRITEWP                equ 16
+SPRITE_WIDTH_PIXELS     equ 16
 
 ; colors 
 ALIEN_COLOR             equ 02h  ; Green
@@ -89,34 +90,34 @@ game_loop:
     ;; ES:DI now points to AFA00h
     ;; Draw aliens -------------------------------
 
-    mov si, alienArr
+    mov si, alienArr 
     mov bl, ALIEN_COLOR
-    mov ax, [si + 13]   ; AL = alienY, AH = alienX
-    cmp byte [si+19], cl
-    mov cl, 4 
-    jg draw_alien_loop  ; Nope, use normal sprites
-    add di, cx 
+    mov ax, [si+13]       ; AL = alienY, AH = alienX
+    cmp byte [si+19], cl  ; Change alien? CL = 0 from above
+    mov cl, 4
+    jg draw_next_alien_row    ; Nope, use normal sprite  
+    add di, cx                ; Yes, use alternate sprite  (CX = 4)
     draw_next_alien_row:
-        pusha 
-        mov cl, 8       ; # of aliens to chceck per row
+        pusha
+        mov cl, 8             ; # of aliens to check per row      
         .check_next_alien:
             pusha
-            dec cx 
-            bt [si], cx 
-            jnc .next_alien
+            dec cx
+            bt [si], cx     ; Bit test - copy bit to carry flag
+            jnc .next_alien ; Not set, skip
 
-            mov si, di 
-            call draw_sprite 
+            mov si, di      ; SI = alien sprite to draw
+            call draw_sprite
 
             .next_alien:
-                popa 
-                add ah, SPRITEW+4
+                popa
+                add ah, SPRITE_WIDTH+4
         loop .check_next_alien
 
-        popa 
-        add al, SPRITEH+2
+        popa
+        add al, SPRITE_HEIGHT+2
+        inc si
     loop draw_next_alien_row
-    
 
 
     ;; Draw barriers -----------------------------
@@ -134,10 +135,10 @@ game_loop:
     ;; Delay timer - 1 tick delay (1 tick = 18.2/second)
     ;; 046Ch # of imer ticks since midnight 
     delay_timer:
-        mov ax, word [046Ch]
+        mov ax, [CS:TIMER]
         inc ax
         .wait_d:
-            cmp [0x046C], ax 
+            cmp [CS:TIMER], ax 
             jl .wait_d
 jmp game_loop
 
@@ -154,16 +155,33 @@ game_over:
 ;;  AL = Y Value of sprite 
 ;;  AH = X value of sprite 
 ;;  BL = color 
+
+
 draw_sprite:
-    call get_screen_position
-    mov cl, SPRITEH
+    call get_screen_position    ; Get X/Y position in DI to draw at
+    mov cl, SPRITE_HEIGHT
     .next_line:
-        push cx 
-        lodsb 
-        ;; I am here!!!!
+        push cx
+        lodsb                   ; AL = next byte of sprite data
+        xchg ax, dx             ; save off sprite data
+        mov cl, SPRITE_WIDTH    ; # of pixels to draw in sprite
+        .next_pixel:
+            xor ax, ax          ; If drawing blank/black pixel
+            dec cx
+            bt dx, cx           ; Is bit in sprite set? Copy to carry
+            cmovc ax, bx        ; Yes bit is set, move BX into AX (BL = color)
+            mov ah, al          ; Copy color to fill out AX
+            mov [di+SCREEN_WIDTH], ax
+            stosw                   
+        jnz .next_pixel                               
 
+        add di, SCREEN_WIDTH*2-SPRITE_WIDTH_PIXELS
+        pop cx
+    loop .next_line
 
-    ret 
+    ret
+ 
+
 
 ;; GET X/Y screen position in DI 
 ;; INPUT Parameters:
@@ -171,15 +189,17 @@ draw_sprite:
 ;;  AH = X value 
 ;; Clobbers:
 ;;  DX
+
 get_screen_position:
-    mov dx, ax      ; Save Y/X values  
+    mov dx, ax      ; Save Y/X values
     cbw             ; Convert byte to word - sign extend AL into AH, AH = 0 if AL < 128
-    imul di, ax, SCREEN_WIDTH*2   ; DI = Y value 
-    mov ah, al      ; AX = X value  
+    imul di, ax, SCREEN_WIDTH*2  ; DI = Y value
+    mov al, dh      ; AX = X value
     shl ax, 1       ; X value * 2
-    add di, ax      ; DI = Y value + X value or X/Y positions 
+    add di, ax      ; DI = Y value + X value or X/Y position
 
     ret
+
 
 ;; CODE SEGMENT DATA ===========================================
 sprite_bitmaps:
