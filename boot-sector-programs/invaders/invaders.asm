@@ -161,8 +161,6 @@ game_over:
 ;;  AL = Y Value of sprite 
 ;;  AH = X value of sprite 
 ;;  BL = color 
-
-
 draw_sprite:
     call get_screen_position    ; Get X/Y position in DI to draw at
     mov cl, SPRITE_HEIGHT
@@ -195,7 +193,6 @@ draw_sprite:
 ;;  AH = X value 
 ;; Clobbers:
 ;;  DX
-
 get_screen_position:
     mov dx, ax      ; Save Y/X values
     cbw             ; Convert byte to word - sign extend AL into AH, AH = 0 if AL < 128
