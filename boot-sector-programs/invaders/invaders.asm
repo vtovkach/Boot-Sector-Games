@@ -12,8 +12,8 @@ ship            equ 0FA08h
 barrierArr      equ 0FA0Ch 
 alienArr        equ 0FA20h ; 2 words (1 dblword) - 32bits/aliens
 playerX         equ 0FA24h
-shotsArr        equ 0FA25h
-alienY          equ 0FA2Dh
+shotsArr        equ 0FA25h ; 4 Y/X shot values - 8 bytes, 1st shot is player 
+alienY          equ 0FA2Dh 
 alienX          equ 0FA2Eh
 num_aliens      equ 0FA2Fh
 direction       equ 0FA30h
@@ -25,8 +25,9 @@ SCREEN_WIDTH            equ 320
 SCREEN_HEIGHT           equ 200
 VIDEO_MEMORY            equ 0A000h
 TIMER                   equ 046Ch  ; # of timer ticks since midnight
-BARRIERX                equ 22
-BARRIERY                equ 85
+BARRIERXY               equ 0x1953
+BARRIERX                equ 0x19
+BARRIERY                equ 0x53
 PLAYERY                 equ 93
 SPRITE_HEIGHT           equ 4
 SPRITE_WIDTH            equ 8
@@ -125,13 +126,84 @@ game_loop:
         inc si
     loop draw_next_alien_row
 
+    ;; Draw player ship -------------------------- 
+    lodsb ; AL = playerX 
+    push si 
+    mov si, ship
+    mov ah, PLAYERY
+    xchg ah, al ; Swap playerX and PlayerY values
+    mov bl, PLAYER_COLOR
+    call draw_sprite
 
     ;; Draw barriers -----------------------------
-    ;; Draw player ship --------------------------
+    mov bl, BARRIER_COLOR
+    mov ax, BARRIERXY
+    mov cl, 5
+    draw_barrier_loop:
+        pusha   
+        call draw_sprite
+        popa
+        add ah, 25       ; # of pixels between barriers 
+        add si, SPRITE_HEIGHT  
+    loop draw_barrier_loop
+    pop si 
+
     ;; Check if shot hit anything ----------------
+    mov cl, 4 
+    get_next_shot:
+        push cx 
+        lodsw           ; Get Y/X values for shot in AL/AH
+        cmp al, 0 
+        jnz check_shot 
+        next_shot:
+            pop cx 
+    loop get_next_shot 
+
+    ;;jmp create_alien_shots 
+
+    check_shot:
+        call get_screen_position     ; Put shot Y/X position in DI 
+        mov al, [di]
+
         ;; Hit player
-        ;; Hit barrier 
+        cmp al, PLAYER_COLOR
+        je game_over 
+
+        ;; Hit barrier
+        cmp al, BARRIER_COLOR
+        jne .check_hit_alien 
+
+        xor bx, bx 
+
+        mov bx, barrierArr                  ; Start checking at first barrier 
+        mov ah, BARRIERX + SPRITE_WIDTH     ; Start checking at right side of sprite
+
+        ; dh X dl Y
+        .check_barrier_loop:
+            cmp dh, ah
+            ja .next_barrier 
+
+            sub ah, SPRITE_WIDTH        ; Get starting X value of barrier 
+            sub dh, ah                  ; Subtract from shot X 
+
+            pusha 
+            sub dl, BARRIERY            ; Subtract from shot Y
+            add bl, dl                  ; BX now points to pixel row of barrier 
+            mov al, 7
+            sub al, dh                  ; Subtract X value from max bit 
+            cbw 
+            btr [bx], ax                ; Bit test & reset, clear bit in barrier 
+            mov byte [si-2], ah 
+            popa 
+            jmp next_shot
+            
+            .next_barrier:
+                add ah, 25              ; Add X offset to check next barrier 
+                add bl, SPRITE_HEIGHT   ; Go to next barrier in array
+
+        jmp .check_barrier_loop 
         ;; Hit allien
+        .check_hit_alien:
     ;; Draw shots -------------------------------- 
     ;; Create alien shots ------------------------
     ;; Move aliens -------------------------------
@@ -216,10 +288,10 @@ sprite_bitmaps:
     db 00111100b
     db 01000010b
 
-    db 00001000b    ; Player Ship bitmap
-    db 00011100b 
-    db 00110110b
-    db 11111111b
+    db 00011000b    ; Barrier bitmap
+    db 00111100b 
+    db 01100110b
+    db 11000011b
 
     db 00111100b    ; Barrier bitmap
     db 01111110b 
